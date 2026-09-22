@@ -8,4 +8,6 @@ class Settings(BaseSettings):
     app_name: str = "Ecommerce API"
     debug: bool = False
     database_url: str = Field(default="", repr=False)
+    stripe_secret_key: str = Field(default="", repr=False)
+    stripe_webhook_secret: str = Field(default="", repr=False)
     cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:3000"])

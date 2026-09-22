@@ -1,8 +1,11 @@
 # Ecommerce
 
-Base inicial para un e-commerce con FastAPI y Next.js. Esta etapa configura dependencias,
-directorios, arranque de ambas aplicaciones y temas claro/oscuro. Los módulos de negocio
-todavía no contienen endpoints, modelos, autenticación ni integración de pagos.
+E-commerce con FastAPI y Next.js, arquitectura limpia, CQRS y temas claro/oscuro.
+Incluye el módulo de pagos con Stripe (Payment Intents y webhooks). Pedidos,
+autenticación, catálogo y checkout permanecen pendientes.
+
+La configuración, SQL versionado, contrato con checkout, componentes y pruebas de pagos
+se describen en [Pagos con Stripe](docs/pagos-stripe.md).
 
 ## Estructura inicial
 
@@ -78,7 +81,7 @@ ecommerce/
 ```
 
 Las carpetas reservadas se conservan en Git con `__init__.py` o `.gitkeep`.
-Cada feature tiene `types.ts`, `service.ts` y `constants.ts` reservados; sus contratos
+Excepto pagos, cada feature tiene `types.ts`, `service.ts` y `constants.ts` reservados; sus contratos
 y componentes (`*-table.tsx`, `*-form.tsx`, `*-filtros.tsx`, `*-card.tsx`, `*-skeleton.tsx`)
 se implementarán junto con el módulo, sin anticipar propiedades de API inexistentes.
 El grupo `(admin)` usará `/admin` para evitar colisiones con las rutas de `(shop)`.
@@ -117,9 +120,10 @@ Copy-Item .env.example .env
 uv run uvicorn src.config.app:app --reload
 ```
 
-API: http://localhost:8000/docs. Por ahora solo se expone la documentación de FastAPI;
-no hay endpoints de negocio. Crear el engine no abre una conexión: el arranque inicial
-no requiere una base SQL disponible. Se necesitará al implementar operaciones de persistencia.
+API: http://localhost:8000/docs. Expone POST /api/v1/pagos/intento y
+POST /api/v1/pagos/webhook. Crear el engine no abre una conexión: el arranque inicial
+no requiere una base SQL disponible. Las operaciones de pagos sí requieren la base
+y el esquema explícitamente instalado.
 Configurar credenciales propias en `.env` antes de conectar a la base.
 
 En otra terminal, desde la raíz:
@@ -132,8 +136,9 @@ npm run dev
 ```
 
 Tienda: http://localhost:3000. La portada inicial anuncia la próxima apertura y permite
-cambiar de tema. `NEXT_PUBLIC_API_URL` queda reservado para los servicios futuros;
-ningún secreto debe exponerse con el prefijo `NEXT_PUBLIC_`.
+cambiar de tema. El servicio de pagos utiliza `NEXT_PUBLIC_API_URL` y la clave pública
+`NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`. Ninguna clave secreta debe exponerse con el prefijo
+`NEXT_PUBLIC_`.
 
 Para MySQL, ejecutar `uv sync --locked --extra mysql` desde `backend` y configurar
 `DATABASE_URL=mysql+asyncmy://usuario:clave@localhost:3306/ecommerce`.
@@ -144,8 +149,9 @@ Para MySQL, ejecutar `uv sync --locked --extra mysql` desde `backend` y configur
 Controller → Mediator Handler → Service → Use Case → Repository Port → Repository Adapter
 ```
 
-El contenedor compone las dependencias. Cada handler recibirá un servicio; cada servicio,
-un caso de uso; cada caso de uso dependerá de un puerto ABC. Los adaptadores usarán
+El contenedor compone las dependencias. Los handlers de pagos reciben ServiceFactory,
+que entrega el servicio dentro de su unidad de trabajo. Cada servicio recibe casos de uso;
+cada caso de uso depende de puertos ABC. Los adaptadores usan
 `AsyncSession` y los mappers de aplicación convertirán modelos, entidades y DTOs.
 La dependencia del caso de uso termina en el puerto; el adaptador lo implementa.
 
@@ -155,13 +161,14 @@ Las entidades usarán `@dataclass(kw_only=True)`, los parámetros de ruta/query 
 con `@dataclass` y `Depends()`, y los resultados llevarán el sufijo `Result`.
 Los comandos y queries se decorarán con `@request(DTOResult)` de rmediator.
 
-No se ejecuta DDL al arrancar ni se incluye Alembic. `database/schema/` queda reservado
-para scripts SQL versionados y explícitos. `Base.metadata.create_all` solo permitiría
+No se ejecuta DDL al arrancar ni se incluye Alembic. `database/schema/` contiene los
+scripts SQL versionados de pagos para PostgreSQL y MySQL. `Base.metadata.create_all` solo permitiría
 crear tablas nuevas: no sustituye los cambios de esquema sobre tablas existentes.
 
-La autenticación de clientes/admin, autorización, transacciones de inventario, checkout
-e integración de pagos se desarrollarán en las siguientes etapas. No hay pantallas ni
-rutas administrativas operativas en esta base.
+La autenticación de clientes/admin, transacciones de inventario y checkout se desarrollarán
+en las siguientes etapas. Pagos autoriza el acceso mediante un token de checkout persistido
+y usa el total calculado en el servidor. No hay pantallas ni rutas administrativas
+operativas en esta base.
 
 ## Verificación
 
@@ -178,7 +185,9 @@ npm run typecheck
 npm run build
 ```
 
-Las carpetas de tests están reservadas; no existe todavía una suite de negocio.
+La suite de pagos incluye pruebas unitarias y pruebas de integración sobre PostgreSQL
+aislado. Ejecutar `uv run pytest -q`; consultar la guía de pagos para configurar
+`TEST_DATABASE_URL` y habilitar las pruebas de persistencia y concurrencia.
 
 ## Referencias de configuración
 

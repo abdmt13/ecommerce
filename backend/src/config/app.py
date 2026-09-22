@@ -5,10 +5,12 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.config.container import Container
+from src.presentation.controllers.pago_controller import router as pago_router
+from src.presentation.pago_exception_handlers import registrar_pago_exception_handlers
 
 
-def create_app() -> FastAPI:
-    container = Container()
+def create_app(container: Container | None = None) -> FastAPI:
+    container = container if container is not None else Container()
     settings = container.settings()
 
     @asynccontextmanager
@@ -18,11 +20,15 @@ def create_app() -> FastAPI:
         try:
             yield
         finally:
+            if settings.stripe_secret_key and settings.stripe_webhook_secret:
+                await container.pasarela_pago().close()
             if database is not None:
                 await database.close()
             container.unwire()
 
     application = FastAPI(title=settings.app_name, debug=settings.debug, lifespan=lifespan)
+    application.include_router(pago_router)
+    registrar_pago_exception_handlers(application)
     application.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
