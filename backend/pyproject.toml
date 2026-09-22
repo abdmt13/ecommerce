@@ -1,0 +1,42 @@
+[project]
+name = "ecommerce-backend"
+version = "0.1.0"
+description = "API de e-commerce con Clean Architecture, DDD y CQRS."
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi==0.141.1",
+    "uvicorn[standard]==0.53.0",
+    "rmediator==0.2.7",
+    "dependency-injector==4.49.1",
+    "sqlalchemy[asyncio]==2.0.54",
+    "asyncpg==0.31.0",
+    "pydantic[email]==2.13.5",
+    "pydantic-settings==2.15.0",
+]
+
+[project.optional-dependencies]
+mysql = ["asyncmy==0.2.15"]
+
+[dependency-groups]
+dev = [
+    "ruff==0.16.8",
+    "pytest==9.1.1",
+    "pytest-asyncio==1.4.0",
+    "httpx==0.28.1",
+]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+src = ["src"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+asyncio_mode = "auto"
